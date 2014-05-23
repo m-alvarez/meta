@@ -1,0 +1,8 @@
+{ 
+	zero is (_self) -> {
+        add is (self) -> function(other) -> other end;
+        suc is (self) -> extend self with {
+            add is function (other) -> self . suc end;
+        };
+    }
+}

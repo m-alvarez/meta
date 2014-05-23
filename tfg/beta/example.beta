@@ -1,0 +1,4 @@
+
+List := function(t:{}) {
+	fold is k:{} -> base:k -> f:(k -> t -> k) -> k
+}

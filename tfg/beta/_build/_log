@@ -1,0 +1,15 @@
+### Starting build.
+# Target: typechecking.ml.depends, tags: { extension:ml, file:typechecking.ml, ocaml, ocamldep, quiet }
+/home/simply/ocamlbrew/ocaml-4.01.0/bin/ocamldep.opt -modules typechecking.ml > typechecking.ml.depends
+# Target: structures.mli.depends, tags: { extension:mli, file:structures.mli, ocaml, ocamldep, quiet }
+/home/simply/ocamlbrew/ocaml-4.01.0/bin/ocamldep.opt -modules structures.mli > structures.mli.depends # cached
+# Target: structures.cmi, tags: { byte, compile, extension:mli, file:structures.mli, interf, ocaml, quiet }
+/home/simply/ocamlbrew/ocaml-4.01.0/bin/ocamlc.opt -c -o structures.cmi structures.mli # cached
+# Target: typechecking.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:typechecking.cmo, file:typechecking.ml, implem, ocaml, quiet }
+/home/simply/ocamlbrew/ocaml-4.01.0/bin/ocamlc.opt -c -o typechecking.cmo typechecking.ml
++ /home/simply/ocamlbrew/ocaml-4.01.0/bin/ocamlc.opt -c -o typechecking.cmo typechecking.ml
+File "typechecking.ml", line 77, characters 32-37:
+Error: This expression has type Structures.expression
+       but an expression was expected of type Structures.value
+Command exited with code 2.
+# Compilation unsuccessful.
