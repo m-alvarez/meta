@@ -18,7 +18,6 @@ let compile expr =
         | Value(Fn(f))       ->
                 let arg_names = List.map fst f.args in
                 Js.Lit(Js.Fn(arg_names, compile f.body))
-        | Value(FnType(_))   -> raise (Failure "The impossible happened!")
         | Value(Obj(o))      -> Js.Lit(compile_obj o)
         | InhObj([], obj)    -> compile (Value(Obj(obj)))
         | InhObj(p::ps, obj) -> Js.Extend(compile (InhObj(ps, obj)), compile p)
@@ -28,20 +27,23 @@ let compile expr =
             | None    -> raise (Failure "The impossible happened")
             | Some(v) ->
                 name, {Js. self = Some "self"; pot = meth.level; body = compile v })
-            o#methods
+            o.methods
         in Js.Obj(methods)
     in compile expr
 
 let compile_toplevel = function
-    | (defs, body) ->
-        let proto  = List.map (function name, typ, _ -> name, typ) defs in
-        let bodies = List.map (function _, _, def -> def) defs in
-        compile (Call(
-            Value(Fn(
-                { args = proto
-                ; body }
-            ))
-            , bodies))
+    | (defs, pgm) ->
+        let defs = List.rev defs in
+        let rec loop defs pgm = match defs with
+        | [] -> pgm
+        | (name, typ, body) :: defs ->
+            loop defs (Call(
+                Value(Fn(
+                    {args = [(name, typ)]; body = pgm; level = 1}
+                ))
+                , [body]))
+        in
+        compile @@ loop defs pgm
 
 let compile_program ~input ~output =
     let lexbuf = Lexing.from_channel input in

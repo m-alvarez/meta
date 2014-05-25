@@ -1,4 +1,11 @@
+component : object[3]{
+    method id [2] : object[1]{} is abstract;
+    method name [3] : object[1]{} is abstract;
+} := object[2] {
+    method id [1] : object[1]{} is abstract;
+    method name[2] : object[1]{} is abstract;
+};
 
-List := function(t:{}) {
-	fold is k:{} -> base:k -> f:(k -> t -> k) -> k
-}
+begin
+    component
+end

@@ -1,10 +1,10 @@
 type fn =
-    { args : (string * expression) list
-    ; body : expression }
+    { args  : (string * expression) list
+    ; body  : expression
+    ; level : int }
 and obj =
-    < level : int 
-    ; parents : obj list
-    ; methods : (string * meth) list >
+    { level : int 
+    ; methods : (string * meth) list }
 and meth =
     { level : int
     ; typ   : expression
@@ -12,12 +12,15 @@ and meth =
 and value =
     | Obj    of obj
     | Fn     of fn
-    | FnType of value list * value
 and expression =
     | New     of expression
     | Method  of expression * string
     | Call    of expression * expression list
     | Id      of string
     | Value   of value
+    | InhObj  of expression list * obj
 
-type context = (string, expression) Hashtbl.t
+type definition = string * expression * expression
+type program = definition list * expression
+
+module Ctx : module type of Map.Make(String)
