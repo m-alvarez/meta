@@ -12,7 +12,6 @@ rule token = parse
     | "begin"    { BEGIN }
     | "end"      { END }
     | "new"      { NEW }
-    | "function" { FUNCTION }
     | "is"       { IS }
     | "object"   { OBJECT }
     | "method"   { METHOD }
@@ -27,7 +26,6 @@ rule token = parse
     | ":" { COLON }
     | ":=" { DEF }
     | "," { COMMA }
-    | "->" { ARROW }
     | "."  { DOT }
     | eof  { EOF } 
     | ['a'-'z''A'-'Z''_']+ as lxm { Id(lxm) }

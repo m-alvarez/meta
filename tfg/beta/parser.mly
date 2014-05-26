@@ -4,17 +4,16 @@
 
 %token <string> Id
 %token <int> Int
-%token FUNCTION OBJECT
+%token OBJECT
 %token NEW IS DEF INHERIT METHOD ABSTRACT
 %token BEGIN END
 %token LBRACE RBRACE LPAR RPAR LBRACKET RBRACKET
 %token COMMA SEMICOLON COLON
 %token EOF
-%token DOT ARROW 
+%token DOT 
 
 %left COMMA
 %nonassoc COLON
-%nonassoc ARROW
 %nonassoc DOT
 %nonassoc LPAR
 
@@ -29,7 +28,7 @@ pgm:
 ;
 
 def:
-    Id COLON expr DEF expr SEMICOLON { ($1, $3, $5) }
+    Id DEF expr SEMICOLON { ($1, $3) }
 ;
 
 def_list: 
@@ -38,24 +37,11 @@ def_list:
 ;
 
 expr:
-    | fun_lit                  { Value($1) }
     | obj_lit                  { $1 }
     | Id                       { Id($1) }
     | NEW LPAR expr RPAR       { New($3) }
     | LPAR expr RPAR           { $2 }
-    | expr LPAR expr_list RPAR { Call($1, $3) }
     | expr DOT Id              { Method($1, $3) }
-;
-
-expr_list:
-    expr COMMA expr_list { $1 :: $3 }
-    |                    { [] }
-;
-
-fun_lit:
-    FUNCTION level_spec LPAR arg_list RPAR ARROW expr { 
-        Fn({args = $4; body = $7; level = match $2 with None -> 0 | Some(i) -> i}) 
-    }
 ;
 
 num:
@@ -72,7 +58,7 @@ obj_lit:
             ; methods = List.rev $5 }
         in if $4 = []
         then begin
-            Value(Obj(obj))
+            Obj(obj)
         end
         else begin
             InhObj(List.rev $4, obj)
@@ -96,18 +82,23 @@ fields:
 ;
 
 field:
-    | METHOD Id LBRACKET num RBRACKET COLON expr IS field_body {
+    | METHOD Id LBRACKET num RBRACKET opt_type_decl IS field_body {
         ($2,
         { level = $4
-        ; typ   = $7
-        ; value = $9 })
+        ; typ   = $6
+        ; value = $8 })
     }
-    | METHOD Id COLON expr IS field_body {
+    | METHOD Id opt_type_decl IS field_body {
         ($2,
         { level = 0
-        ; typ   = $4
-        ; value = $6 })
+        ; typ   = $3
+        ; value = $5 })
     }
+;
+
+opt_type_decl:
+    | { None }
+    | COLON expr { Some $2 }
 ;
 
 field_body:

@@ -1,26 +1,18 @@
-type fn =
-    { args  : (string * expression) list
-    ; body  : expression
-    ; level : int }
-and obj =
+type obj =
     { level : int 
     ; methods : (string * meth) list }
 and meth =
     { level : int
-    ; typ   : expression
+    ; typ   : expression option
     ; value : expression option }
-and value =
-    | Obj    of obj
-    | Fn     of fn
 and expression =
     | New     of expression
     | Method  of expression * string
-    | Call    of expression * expression list
     | Id      of string
-    | Value   of value
+    | Obj     of obj
     | InhObj  of expression list * obj
 
-type definition = string * expression * expression
+type definition = string * expression
 type program = definition list * expression
 
 module Ctx = Map.Make(String)
