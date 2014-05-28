@@ -20,16 +20,18 @@ let compile (defs, expr) =
         | New(e)             -> Js.New(compile e)
         | Id(i)              -> Js.Name(i)
         | Method(e, i)       -> Js.Method(compile e, i)
-        | Obj(o)             -> Js.Lit(compile_obj o)
-        | InhObj([], obj)    -> compile (Obj(obj))
+        | InhObj([], obj)    -> compile (Value (Obj obj))
         | InhObj(p::ps, obj) -> Js.Extend(compile (InhObj(ps, obj)), compile p)
+        | Value(Obj o)       -> Js.Lit (compile_obj o)
+        | Value(Primitive p) -> p.compile compile
     and compile_obj o = 
         let methods = List.map (function name, meth -> 
             match meth.value with
-            | None    -> raise (Failure "The impossible happened")
+            | None    -> 
+                raise (Failure "The impossible happened")
             | Some(v) ->
-                name, {Js. self = Some "self"; pot = meth.level; body = compile v })
-            o.methods
+                name, {Js. self = Some "self"; pot = meth.pot; body = compile v })
+            (List.filter (function _,meth -> meth.value <> None) o.methods)
         in Js.Obj(methods)
     and add_defs defs expr =
         match defs with

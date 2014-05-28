@@ -1,7 +1,12 @@
+open Reporting 
+
 type id = string
 type literal =
-    | Obj of (id * method_decl) list
-    | Fn  of id list * expression
+    | Obj  of (id * method_decl) list
+    | Fn   of id list * expression
+    | Int  of int
+    | Bool of bool
+    | Prim of string
 and method_decl = 
     { self : id option
     ; pot  : int
@@ -13,6 +18,10 @@ and expression =
     | Extend of expression * expression
     | Apply of expression * expression list
     | Method of expression * id
+    | Add  of expression * expression
+    | Sub  of expression * expression
+    | Eq   of expression * expression
+    | If   of expression * expression * expression
 
 module Context = Set.Make(String)
 
@@ -27,7 +36,7 @@ let rec compile context = function
     | Name(n) -> 
             if Context.mem n context
             then n
-            else raise (Failure "Something horrible happened")
+            else raise (Failure (fmt "Unknown name %s" n))
     | New(e) ->
             "instantiate(" ^ compile context e ^ ")"
     | Extend(e1, e2) ->
@@ -39,6 +48,23 @@ let rec compile context = function
     | Method(e, i) ->
             let e = compile context e in
             "invoke(" ^ e ^ ", \"" ^ i ^ "\")"
+    | Add(l, r) ->
+            let l = compile context l in
+            let r = compile context r in
+            fmt "(%s + %s)" l r
+    | Sub(l, r) ->
+            let l = compile context l in
+            let r = compile context r in
+            fmt "(%s - %s)" l r
+    | Eq(l, r) ->
+            let l = compile context l in
+            let r = compile context r in
+            fmt "(%s === %s)" l r
+    | If(cond, thn, els) ->
+            let cond = compile context cond in
+            let thn  = compile context thn  in
+            let els  = compile context els  in
+            fmt "(%s)?(%s):(%s))" cond thn els
 and compile_literal context = function
     | Obj(methods) -> 
             let methods = List.map (compile_method context) methods in
@@ -50,6 +76,14 @@ and compile_literal context = function
                 result = %s;
                 return result;
              }" (join "," args) (compile new_context body)
+    | Int(i) ->
+            string_of_int i
+    | Bool(true) ->
+            "true"
+    | Bool(false) ->
+            "false"
+    | Prim(s) ->
+            fmt "(%s)" s
 and compile_method context (name, decl) =
     Format.sprintf "%s : %s" name (compile_method_body context decl)
 and compile_method_body context decl =

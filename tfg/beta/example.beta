@@ -1,6 +1,15 @@
-foo := object[1] {};
-bar := object[1] {
-    method baz [0] is foo;
+component := object[3] {
+    method id [1] : object[1]{} is abstract;
+    method name [2] : object[1]{} is abstract;
+};
+
+map := object[2] {
+    method id [0] is object[0]{};
+    method name [1] : object[1]{} is abstract;
+};
+
+test := object[1] {
+    method m [0] : component is map;
 };
 
 begin
