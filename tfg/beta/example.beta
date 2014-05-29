@@ -1,17 +1,23 @@
 component := object[3] {
-    method id [1] : object[1]{} is abstract;
-    method name [2] : object[1]{} is abstract;
+    method id [1] : int is abstract;
+    method name [2] : int is abstract;
 };
 
 map := object[2] {
-    method id [0] is object[0]{};
-    method name [1] : object[1]{} is abstract;
+    method id [0] is 1;
+    method name [1] : int is abstract;
 };
 
-test := object[1] {
-    method m [0] : component is map;
+map_ten := object[2] {
+    method id [0] is 1;
+    method name [1] is 10;
+};
+
+uam := object[1] {
+    method mapUAM [1] : map is new(map_ten);
+    method duplicateMap [1] is self.mapUAM;
 };
 
 begin
-    object[0]{}
+    new(uam).mapUAM.name + 1
 end

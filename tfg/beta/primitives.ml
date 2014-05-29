@@ -15,11 +15,11 @@ let rec bool_type =
 
     ; subtype_of = (fun values other ->
         match other with
-        | Primitive t when t = bool_type -> true
+        | Primitive t when t == bool_type -> true
         | _ -> false)
 
     ; p_level = (fun values ->
-        0)
+        1)
     }
 
 let bool_lit i =
@@ -51,11 +51,11 @@ let rec int_type =
 
     ; subtype_of = (fun values other ->
         match other with
-        | Primitive t when t = int_type -> true
+        | Primitive t when t == int_type -> true
         | _ -> false)
 
     ; p_level = (fun values ->
-        0)
+        1)
     }
 
 let int_lit i =
@@ -82,10 +82,11 @@ let bin_op b l r =
         | `Sub -> Js.Sub (compile l, compile r))
 
     ; type_of = (fun types values ->
-        if Tc.type_of types values l = Primitive int_type
-           && Tc.type_of types values r = Primitive int_type
-        then Primitive int_type
-        else type_error "Binary operation between non-integers")
+        match Tc.type_of types values l, Tc.type_of types values r with
+        | Primitive tl, Primitive tr
+            when tl == int_type && tr == int_type ->
+                Primitive int_type
+        | _ -> type_error "Binary operation between non-integers")
 
     ; evaluate = (fun _values ->
         compiler_error @@ fmt "Trying to evaluate integer expression")
@@ -102,8 +103,8 @@ let eq l r =
         Js.Eq (compile l, compile r))
 
     ; type_of = (fun types values ->
-        if Tc.type_of types values l = Primitive int_type
-           && Tc.type_of types values r = Primitive int_type
+        if Tc.type_of types values l == Primitive int_type
+           && Tc.type_of types values r == Primitive int_type
         then Primitive bool_type
         else type_error "Comparing non-integer arguments")
 
@@ -122,12 +123,12 @@ let if_exp cond thn els =
         Js.If (compile cond, compile thn, compile els))
 
     ; type_of = (fun types values ->
-        if Tc.type_of types values cond <> Primitive bool_type
+        if Tc.type_of types values cond != Primitive bool_type
         then type_error @@ fmt "Using non-boolean expression as condition for if"
         else begin
             let t_thn = Tc.type_of types values thn in
             let t_els = Tc.type_of types values els in
-            if t_thn = t_els
+            if Tc.subtype_of values t_thn t_els && Tc.subtype_of values t_els t_thn
             then (if Tc.value_level values t_thn = 1
                   then t_thn
                   else type_error @@ "Using if to discriminate between non-runtime exprs")

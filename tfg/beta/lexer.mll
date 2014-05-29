@@ -45,10 +45,11 @@ rule token = parse
 
     | eof  { EOF } 
 
-    | ['a'-'z''A'-'Z''_']+ as lxm { Id(lxm) }
-    | ['0'-'9']+ as lxm { Int(int_of_string lxm) }
-    | '-'['0'-'9']+ as lxm { Int(int_of_string lxm) }
     | "true" { Bool true }
     | "false" { Bool false }
+    | ['0'-'9']+ as lxm { Int(int_of_string lxm) }
+    | '-'['0'-'9']+ as lxm { Int(int_of_string lxm) }
+
+    | ['a'-'z''A'-'Z''_']+ as lxm { Id(lxm) }
 
     | _ as lxm { raise (Unexpected_token lxm) }
