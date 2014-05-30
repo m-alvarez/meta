@@ -1,6 +1,14 @@
 open Structures
 open Reporting
 
+let current_method_pot = ref 0
+
+let print_context c =
+    print_string "Context: \n";
+    Ctx.iter (fun k v ->
+        print_string @@ fmt "\t%s\n" k)
+        c
+
 let lookup_name c i =
     try
         Ctx.find i c
@@ -23,69 +31,90 @@ let value_level values v =
     | Obj o -> o.o_level
     | Primitive p -> p.p_level values
 
-let rec type_of_value types values exp =
+let check_method_level values level name typ =
+    if value_level values typ < 1
+    then compiler_error @@ fmt "Runtime object used as inferred type for method %s" name;
+
+    if value_level values typ > level + 1
+    then compiler_error @@ fmt "Method %s escapes layer boundaries" name
+
+let update_method_tables t_meths c_meths name meth =
+    c_meths := (name, meth) :: !c_meths;
+    t_meths := (name, { meth with pot = meth.pot + 1; value = None }) :: !t_meths
+
+let rec type_of_method_list types values self level methods =
+    let values  = ref values      in
+    let types   = ref types       in
+    let c_meths = ref []          in
+    let t_meths = ref []          in
+    List.map (function name,meth ->
+        let o_typ = { self; o_type = ref None; o_level = level + 1; methods = !t_meths} in
+        values := Ctx.add self (Obj{self;o_type = ref (Some o_typ); o_level = level; methods = !c_meths}) !values;
+        types  := Ctx.add self (Obj o_typ) !types; 
+
+        if meth.pot > level
+        then type_error @@ fmt "Method %s will never be instantiated" name;
+        current_method_pot := meth.pot;
+        let t = 
+            match meth.typ, meth.value with
+            | None, None ->
+                type_error @@ fmt "Untyped abstract value %s" name
+            | Some t, None ->
+                if level = 0
+                then type_error @@ fmt "Runtime object with abstract method %s" name;
+                evaluate !types !values t
+            | None, Some(e) ->
+                type_of !types !values e
+            | Some(t), Some(e) ->
+                let t' = type_of !types !values e  in
+                let t  = evaluate !types !values t in
+                let t'_level = value_level !values t' in
+                let t_level  = value_level !values t  in
+                if t_level <> t'_level
+                then type_error @@ fmt "Level mismatch on method %s: has %d, expected %d" name t'_level t_level;
+                if not (subtype_of !types !values t' t)
+                then type_error @@ fmt "Type mismatch on method %s" name;
+                t
+        in
+        check_method_level !values level name t;
+        update_method_tables t_meths c_meths name { meth with typ = Some (Value t) };
+        name, { pot = meth.pot + 1; typ = Some (Value t); value = None }
+    ) methods
+
+and type_of_value types values exp =
     match exp with
     | Obj obj ->
         begin
-            let o_level = obj.o_level + 1 in
-            let methods = obj.methods     in
-            let values  = ref values      in
-            let c_meths = ref []          in
-            let methods = List.map (function name,meth ->
-                if meth.pot > obj.o_level
-                then type_error @@ fmt "Method %s will never be instantiated" name;
-                match meth.typ, meth.value with
-                | None, None ->
-                    type_error @@ fmt "Untyped abstract value %s" name
-                | Some(t), None ->
-                    let t = evaluate !values t in
-                    if value_level !values t < 1
-                    then compiler_error @@ fmt "Runtime object used as provided type for method %s" name;
-                    if obj.o_level = 0
-                    then type_error @@ fmt "Runtime object with abstract method %s" name;
-                    c_meths := (name, meth) :: !c_meths;
-                    values := Ctx.add "self" (Obj { o_level; methods = !c_meths }) !values;
-                    name, { pot = meth.pot + 1; typ = Some (Value t); value = None }
-                | None, Some(e) ->
-                    let t = type_of types !values e in
-                    if value_level !values t < 1
-                    then compiler_error @@ fmt "Runtime object used as inferred type for method %s" name;
-                    c_meths := (name, meth) :: !c_meths;
-                    values := Ctx.add "self" (Obj { o_level; methods = !c_meths }) !values;
-                    name, { pot = meth.pot + 1; typ = Some (Value t); value = None }
-                | Some(t), Some(e) ->
-                    let t' = type_of types !values e  in
-                    let t  = evaluate !values t in
-                    let t'_level = value_level !values t' in
-                    let t_level  = value_level !values t  in
-                    if t_level <> t'_level
-                    then type_error @@ fmt "Level mismatch on method %s: has %d, expected %d" name t'_level t_level;
-                    if not (subtype_of !values t' t)
-                    then type_error @@ fmt "Type mismatch on method %s" name;
-                    c_meths := (name, meth) :: !c_meths;
-                    values := Ctx.add "self" (Obj { o_level; methods = !c_meths }) !values;
-                    name, { pot = meth.pot + 1; typ = Some (Value t); value = None }
-            ) methods
-            in
-            Obj { o_level; methods } 
-        end
+            match ! (obj.o_type) with
+            | Some t -> Obj t
+            | None ->
+                let o_level = obj.o_level + 1 in
+                let methods = obj.methods     in
+
+                let methods = type_of_method_list types values obj.self obj.o_level methods in
+                let typ = { o_type = ref None; o_level; methods; self = obj.self } in
+                obj.o_type := Some typ;
+                Obj typ
+            end
     | Primitive p ->
         p.type_of types values
 
 
-and type_of (types : value Ctx.t) (values : value Ctx.t) (exp : expression) : value =
+and type_of types values exp : value =
     match exp with
     | New exp -> 
         (* little trick to infer more stuff *)
         let t_exp = as_obj @@ type_of types values exp in
-        let exp   = as_obj @@ evaluate values exp      in
+        let exp   = as_obj @@ evaluate types values exp      in
         if t_exp.o_level = 0 || exp.o_level = 0
         then compiler_error "Evaluated runtime expression";
         if List.exists (function _,meth ->
             meth.pot < 2 && meth.value = None) 
             exp.methods
         then type_error @@ fmt "Abstract method cannot be instantiated";
-        Obj { o_level = exp.o_level
+        Obj { self = exp.self
+            ; o_type = ref None
+            ; o_level = exp.o_level
             ; methods =
                 List.map (function n,m -> n, {m with pot = m.pot - 1 }) 
                     (List.filter (function _,m -> m.pot > 0) t_exp.methods)
@@ -94,13 +123,18 @@ and type_of (types : value Ctx.t) (values : value Ctx.t) (exp : expression) : va
         begin
             let t_exp = as_obj @@ type_of types values exp in
             let meth  = lookup_method t_exp name in
-            if meth.pot <> 1
-            then type_error @@ fmt "Invoking method %s of potency %d" name meth.pot
-            else match meth.typ with
+            if meth.pot <> 1 && exp <> Id "self" 
+            then type_error @@ fmt "Invoking method %s of potency %d" name (meth.pot - 1);
+            if exp = Id "self" && meth.pot - 1  <> !current_method_pot
+            then type_error @@ fmt "Invoking method self.%s of potency %d from level %d" 
+                name 
+                (meth.pot - 1) 
+                !current_method_pot;
+            match meth.typ with
             | None ->
-                compiler_error @@ fmt "Can't infer the type of method %s" name
+                compiler_error @@ fmt "Wasn't able to infer the type of method %s" name
             | Some(t) -> 
-                evaluate values t
+                evaluate types values t
         end
     | Id id ->
         begin
@@ -111,14 +145,15 @@ and type_of (types : value Ctx.t) (values : value Ctx.t) (exp : expression) : va
         end
     | Value v ->
         type_of_value types values v
-    | InhObj (parents, obj) ->
+    | InhObj (level, self, sections) ->
+        print_endline "QUUZ";
         raise Not_yet_implemented
 
 
-and evaluate values exp : value =
+and evaluate types values exp : value =
     match exp with
     | New exp ->
-        let exp = as_obj @@ evaluate values exp in
+        let exp = as_obj @@ evaluate types values exp in
         if exp.o_level < 1
         then compiler_error @@ "Trying to instantiate a runtime object";
         let o_level = exp.o_level - 1 in
@@ -130,10 +165,10 @@ and evaluate values exp : value =
             meth.pot > 0
         ) exp.methods)
         in
-        Obj { o_level; methods }
+        Obj { self = exp.self; o_type = ref (Some exp); o_level; methods }
     | Method (exp, name) ->
         begin
-            let exp = as_obj @@ evaluate values exp in
+            let exp = as_obj @@ evaluate types values exp in
             if exp.o_level < 1
             then compiler_error @@ "Trying to evaluate a runtime method invocation";
             let meth = lookup_method exp name in
@@ -143,7 +178,7 @@ and evaluate values exp : value =
             | None    ->
                 type_error @@ fmt "Trying to invoke abstract method %s" name;
             | Some(b) ->
-                let b = evaluate values b in
+                let b = evaluate types values b in
                 let b_level = value_level values b in
                 if b_level < 1
                 then compiler_error @@ "Evaluated a runtime expression";
@@ -152,14 +187,16 @@ and evaluate values exp : value =
     | Id id ->
         lookup_name values id
     | Value (Obj o) ->
+        let _t = type_of types values exp in
         Obj o
     | Value (Primitive p) ->
-        p.evaluate values
-    | InhObj (parents, obj) ->
+        p.evaluate types values
+    | InhObj (level, self, sections) ->
+        print_string "FUBAR";
         raise Not_yet_implemented
 
 
-and subtype_of values t1 t2 =
+and subtype_of types values t1 t2 =
     let t1_level = value_level values t1 in
     let t2_level = value_level values t2 in
     t1_level = t2_level
@@ -173,7 +210,7 @@ and subtype_of values t1 t2 =
                     then type_error @@ fmt "Potency mismatch for method %s" name;
                     match meth'.typ, meth.typ with
                     | Some(t'), Some(t) ->
-                        subtype_of values (evaluate values t') (evaluate values t)
+                        subtype_of types values (evaluate types values t') (evaluate types values t)
                     | _ ->
                         compiler_error @@ fmt "Failed inference for method %s" name
                 end

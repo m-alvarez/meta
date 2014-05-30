@@ -1,3 +1,4 @@
+open Reporting
 open Structures
 open Typechecking
 open Parser
@@ -11,7 +12,7 @@ let rec join s a =
 let compile (defs, expr) =
     let values = List.fold_left (fun ctx (name, expr) ->
         let _t = type_of Ctx.empty ctx expr in
-        Ctx.add name (evaluate ctx expr) ctx)
+        Ctx.add name (evaluate Ctx.empty ctx expr) ctx)
         Ctx.empty
         defs
     in
@@ -20,8 +21,7 @@ let compile (defs, expr) =
         | New(e)             -> Js.New(compile e)
         | Id(i)              -> Js.Name(i)
         | Method(e, i)       -> Js.Method(compile e, i)
-        | InhObj([], obj)    -> compile (Value (Obj obj))
-        | InhObj(p::ps, obj) -> Js.Extend(compile (InhObj(ps, obj)), compile p)
+        | InhObj (i,s,l)     -> compile_inherit i s l
         | Value(Obj o)       -> Js.Lit (compile_obj o)
         | Value(Primitive p) -> p.compile compile
     and compile_obj o = 
@@ -30,9 +30,20 @@ let compile (defs, expr) =
             | None    -> 
                 raise (Failure "The impossible happened")
             | Some(v) ->
-                name, {Js. self = Some "self"; pot = meth.pot; body = compile v })
+                name, {Js. self = Some o.self; pot = meth.pot; body = compile v })
             (List.filter (function _,meth -> meth.value <> None) o.methods)
         in Js.Obj(methods)
+    and compile_inherit level self = function
+        | [] ->
+            Js.Lit (Js.Obj [])
+        | (`Inherit e) :: r -> 
+            let e = compile e in
+            let r = compile_inherit level self r in
+            Js.Extend (e, r)
+        | (`Base methods) :: r ->
+            let b = compile_obj { self; o_type = ref None; o_level = level; methods } in
+            let r = compile_inherit level self r in
+            Js.Extend (Js.Lit b, r)
     and add_defs defs expr =
         match defs with
         | [] -> expr

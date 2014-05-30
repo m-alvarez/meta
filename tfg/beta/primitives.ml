@@ -8,9 +8,9 @@ let rec bool_type =
         Js.Lit (Js.Prim "Boolean"))
 
     ; type_of = (fun types values ->
-        Obj({ o_level = 2; methods = [] }))
+        Obj({ self = ""; o_type = ref None; o_level = 2; methods = [] }))
 
-    ; evaluate = (fun values ->
+    ; evaluate = (fun types values ->
         Primitive bool_type)
 
     ; subtype_of = (fun values other ->
@@ -29,7 +29,7 @@ let bool_lit i =
     ; type_of = (fun types values ->
         Primitive bool_type)
 
-    ; evaluate = (fun values ->
+    ; evaluate = (fun types values ->
         compiler_error @@ fmt "Trying to evaluate boolean literal")
 
     ; subtype_of = (fun values other ->
@@ -44,9 +44,9 @@ let rec int_type =
         Js.Lit (Js.Prim "Number"))
 
     ; type_of = (fun types values ->
-        Obj({ o_level = 2; methods = [] }))
+        Obj({ self = ""; o_type = ref None; o_level = 2; methods = [] }))
 
-    ; evaluate = (fun values ->
+    ; evaluate = (fun types values ->
         Primitive int_type)
 
     ; subtype_of = (fun values other ->
@@ -65,7 +65,7 @@ let int_lit i =
     ; type_of = (fun types values ->
         Primitive int_type)
 
-    ; evaluate = (fun values ->
+    ; evaluate = (fun types values ->
         compiler_error @@ fmt "Trying to evaluate integer literal")
 
     ; subtype_of = (fun values other ->
@@ -103,10 +103,11 @@ let eq l r =
         Js.Eq (compile l, compile r))
 
     ; type_of = (fun types values ->
-        if Tc.type_of types values l == Primitive int_type
-           && Tc.type_of types values r == Primitive int_type
-        then Primitive bool_type
-        else type_error "Comparing non-integer arguments")
+        match Tc.type_of types values l, Tc.type_of types values r with
+        | Primitive tl, Primitive tr
+            when tl == int_type && tr == int_type ->
+                Primitive bool_type
+        | _ -> type_error "Comparing non-integers")
 
     ; evaluate = (fun _values ->
         compiler_error @@ fmt "Trying to evaluate boolean expression")
@@ -123,17 +124,22 @@ let if_exp cond thn els =
         Js.If (compile cond, compile thn, compile els))
 
     ; type_of = (fun types values ->
-        if Tc.type_of types values cond != Primitive bool_type
-        then type_error @@ fmt "Using non-boolean expression as condition for if"
-        else begin
-            let t_thn = Tc.type_of types values thn in
-            let t_els = Tc.type_of types values els in
-            if Tc.subtype_of values t_thn t_els && Tc.subtype_of values t_els t_thn
-            then (if Tc.value_level values t_thn = 1
-                  then t_thn
-                  else type_error @@ "Using if to discriminate between non-runtime exprs")
-            else type_error @@ "Type mismatch between if branches"
-        end)
+        match Tc.type_of types values cond with
+        | Primitive t
+            when t == bool_type ->
+                begin
+                    let t_thn = Tc.type_of types values thn in
+                    let t_els = Tc.type_of types values els in
+                    if Tc.subtype_of types values t_thn t_els 
+                       && Tc.subtype_of types values t_els t_thn
+                    then (if Tc.value_level values t_thn = 1
+                          then t_thn
+                          else type_error @@ "Using if to discriminate between non-runtime exprs")
+                    else type_error @@ "Type mismatch between if branches"
+                end
+        | _ ->
+            type_error @@ "Using non-boolean as condition for if"
+        )
 
     ; evaluate = (fun _values ->
         compiler_error @@ fmt "Trying to evaluate if expression")

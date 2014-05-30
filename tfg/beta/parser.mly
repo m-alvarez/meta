@@ -103,36 +103,48 @@ bin_op:
 ;
 
 obj_lit:
-    OBJECT level_spec LBRACE
-        inherit_section
+    OBJECT self_spec level_spec LBRACE
         fields
     RBRACE {
-        let obj =
-            { o_level = (match $2 with | None -> 0 | Some(i) -> i)
-            ; methods = List.rev $5 }
-        in if $4 = []
-        then begin
-            Value (Obj obj)
-        end
-        else begin
-            InhObj(List.rev $4, obj)
-        end
+        let level = match $3 with None -> 0 | Some i -> i in
+        match $5 with
+        | [`Base methods] ->
+            Value (Obj 
+                { o_type  = ref None
+                ; o_level = level
+                ; self    = $2
+                ; methods })
+        | [] ->
+            Value (Obj
+                { o_type  = ref None
+                ; o_level = level
+                ; self    = $2
+                ; methods = [] })
+        | _ ->
+            InhObj (level, $2, $5)
     }
 ;
+
+self_spec:
+    | { "self" }
+; 
 
 level_spec:
     | LBRACKET num RBRACKET { Some $2 }
     | { None }
 ;
 
-inherit_section:
-    | {[]} 
-    | INHERIT expr SEMICOLON inherit_section { $2 :: $4 }
-;
-
 fields:
     | { [] }
-    | field SEMICOLON fields { $1 :: $3 }
+    | field SEMICOLON fields {
+        match $3 with
+        | (`Inherit _) :: _
+        | [] ->
+            `Base [$1] :: $3 
+        | (`Base l) :: r ->
+            `Base ($1::l) :: r
+    }
+    | INHERIT expr SEMICOLON fields { (`Inherit $2) :: $4 } 
 ;
 
 field:
