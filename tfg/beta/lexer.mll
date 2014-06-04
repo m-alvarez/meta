@@ -17,10 +17,9 @@ rule token = parse
     | "end"      { END }
 
     | "new"      { NEW }
-    | "is"       { IS }
+    | ":="       { IS }
     | "object"   { OBJECT }
-    | "method"   { METHOD }
-    | "abstract" { ABSTRACT }
+    | "-"   { METHOD }
 
     | "{" { LBRACE }
     | "}" { RBRACE }
@@ -39,7 +38,6 @@ rule token = parse
 
     | ";" { SEMICOLON }
     | ":" { COLON }
-    | ":=" { DEF }
     | "," { COMMA }
     | "."  { DOT }
 

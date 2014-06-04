@@ -10,7 +10,7 @@
 
 %token INT_TYPE BOOL_TYPE
 
-%token NEW IS DEF INHERIT METHOD ABSTRACT
+%token NEW IS IS INHERIT METHOD 
 %token BEGIN END
 %token LBRACE RBRACE LPAR RPAR LBRACKET RBRACKET
 %token COMMA SEMICOLON COLON
@@ -42,7 +42,7 @@ pgm:
 ;
 
 def:
-    Id DEF expr SEMICOLON { ($1, $3) }
+    Id IS expr SEMICOLON { ($1, $3) }
 ;
 
 def_list: 
@@ -148,26 +148,26 @@ fields:
 ;
 
 field:
-    | METHOD Id LBRACKET num RBRACKET opt_type_decl IS field_body {
+    | METHOD Id LBRACKET num RBRACKET opt_type_decl field_body {
         ($2,
         { pot   = $4
         ; typ   = $6
-        ; value = $8 })
+        ; value = $7 })
     }
-    | METHOD Id opt_type_decl IS field_body {
+    | METHOD Id opt_type_decl field_body {
         ($2,
         { pot   = 0
         ; typ   = $3
-        ; value = $5 })
+        ; value = $4 })
     }
 ;
 
 opt_type_decl:
-    | { None }
+    |            { None }
     | COLON expr { Some $2 }
 ;
 
 field_body:
-    | ABSTRACT { None }
-    | expr     { Some($1) }
+    |         { None }
+    | IS expr { Some($2) }
 ;
