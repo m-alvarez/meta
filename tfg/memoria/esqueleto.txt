@@ -1,0 +1,47 @@
+Una formalizacion del metamodelado multinivel
+
+Introduccion (1 pagina)
+
+Motivacion del problema (~2-4 paginas)
+	- Cosas dificiles de modelar con dos niveles
+	- Posibles soluciones como powertypes
+	- Distintos niveles de UML
+
+El metamodelado multinivel como alternativa (~10 paginas)
+	- Idea fundamental: permitir mas niveles en un modelo. Instanciacion profunda
+	- Quizas ver un poco de la formalizacion categorica y metaDepth
+
+Soluciones a problemas concretos (~2-3 paginas)
+	- Mostramos algunos problemas que se puedan resolver mas facilmente con metamodelos
+
+Problemas actuales (~1-2 pagina)
+	- Necesitamos lenguajes practicos de programacion que permitan emplear estas tecnicas
+	- Necesitamos un formalismo que nos permita entender los distintos aspectos del
+	modelado y como interactuan entre ellos
+
+Un calculo no tipado (~5 paginas)
+	- Exponemos el calculo no tipado que usamos de base para la semantica
+	- Exponemos quizas algunos programas de ejemplo
+
+Teoria de tipos (~2 paginas)
+	- Se explica un poco la idea de un sistema de tipos y la sintaxis de la misma
+
+Trabajo previo: sistemas puros de subtipos (~2-3 paginas)
+	- Explicamos el trabajo que ha realizado este tipo http://redwood.mza.com/~dhutchins/papers/thesis_final.pdf por encima
+
+Tipado del calculo multinivel (~5 paginas)
+	- Aqui exponemos una version tipada del calculo no tipado anterior
+	- Ejemplos de algunos programas
+	- Discusion sobre aspectos tecnicos: implementacion de la potencia, distincion entre tipos
+	y valores, tipado estructural, tipos polimorficos
+
+Investigacion futura (~2-4 paginas)
+	- MOPs
+	- Actualizacion dinamica de metamodelos
+	- Herramientas para Eclipse
+	- Generacion automatica de modelos a partir de datos reales con tipado estructural
+	- Inferencia de tipos
+	- Usar tipos dependientes para formalizar propiedades de programas
+	- Mejor compilador
+
+Referencias (~2 paginas)
