@@ -17,6 +17,7 @@ rule token = parse
     | "end"      { END }
 
     | "new"      { NEW }
+    | "instantiate" { INST }
     | ":="       { IS }
     | "object"   { OBJECT }
     | "-"   { METHOD }

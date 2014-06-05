@@ -10,7 +10,7 @@
 
 %token INT_TYPE BOOL_TYPE
 
-%token NEW IS IS INHERIT METHOD 
+%token NEW IS INHERIT METHOD INST
 %token BEGIN END
 %token LBRACE RBRACE LPAR RPAR LBRACKET RBRACKET
 %token COMMA SEMICOLON COLON
@@ -21,15 +21,12 @@
 %token EOF
 %token DOT 
 
-%left COMMA
 %left ADD SUB
 %nonassoc EQ
 
-%nonassoc COLON
 %nonassoc DOT
-%nonassoc LPAR
 
-%nonassoc IF THEN ELSE
+%nonassoc ELSE
 
 %start pgm
 %type <Structures.program> pgm
@@ -79,10 +76,10 @@ primitive:
 ;
 
 new_sugar:
-    | NEW opt_pot_decl LPAR expr COMMA new_sugar_args RPAR {
+    | INST opt_pot_decl LPAR expr COMMA new_sugar_args RPAR {
         let pot    = $2 in
         let parent = $4 in
-        let meths  = List.map (fun m -> {m with pot = m.pot + 1}) $6 in
+        let meths  = List.map (function n,m -> n,{m with pot = m.pot + 1}) $6 in
         New(
             InhObj (pot, "self",
                 [`Base meths; `Inherit parent]
@@ -92,9 +89,8 @@ new_sugar:
 ;
 
 new_sugar_args:
-    | { [] }
     | Id opt_pot_decl IS expr args_tail { 
-        ($1 {pot = $2; typ = None; value = Some $4}) :: $5
+        ($1, {pot = $2; typ = None; value = Some $4}) :: $5
     }
 ;
 
