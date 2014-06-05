@@ -82,7 +82,7 @@ new_sugar:
     | NEW opt_pot_decl LPAR expr COMMA new_sugar_args RPAR {
         let pot    = $2 in
         let parent = $4 in
-        let meths  = $6 in
+        let meths  = List.map (fun m -> {m with pot = m.pot + 1}) $6 in
         New(
             InhObj (pot, "self",
                 [`Base meths; `Inherit parent]
