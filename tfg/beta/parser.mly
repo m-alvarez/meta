@@ -57,10 +57,15 @@ expr:
     | LPAR expr RPAR           { $2 }
     | expr DOT Id              { Method($1, $3) }
     | primitive                { Value (Primitive $1) }
+    | sugar                    { $1 }
 ;
 
 num:
     Int { if $1 < 0 then raise (Failure "Number must be positive") else $1 }
+;
+
+sugar:
+    | new_sugar { $1 }
 ;
 
 primitive:
@@ -71,6 +76,33 @@ primitive:
     | if_expr   { $1 }
     | eq        { $1 }
     | bin_op    { $1 }
+;
+
+new_sugar:
+    | NEW opt_pot_decl LPAR expr COMMA new_sugar_args RPAR {
+        let pot    = $2 in
+        let parent = $4 in
+        let meths  = $6 in
+        New(
+            InhObj (pot, "self",
+                [`Base meths; `Inherit parent]
+            )
+        )
+    }
+;
+
+new_sugar_args:
+    | { [] }
+    | Id opt_pot_decl IS expr args_tail { 
+        ($1 {pot = $2; typ = None; value = Some $4}) :: $5
+    }
+;
+
+args_tail:
+    | { [] }
+    | COMMA Id opt_pot_decl IS expr args_tail {
+        ($2, {pot = $3; typ = None; value = Some $5}) :: $6
+    }
 ;
 
 if_expr:
@@ -148,18 +180,17 @@ fields:
 ;
 
 field:
-    | METHOD Id LBRACKET num RBRACKET opt_type_decl field_body {
+    | METHOD Id opt_pot_decl opt_type_decl field_body {
         ($2,
-        { pot   = $4
-        ; typ   = $6
-        ; value = $7 })
+        { pot   = $3
+        ; typ   = $4
+        ; value = $5 })
     }
-    | METHOD Id opt_type_decl field_body {
-        ($2,
-        { pot   = 0
-        ; typ   = $3
-        ; value = $4 })
-    }
+;
+
+opt_pot_decl:
+    | { 0 }
+    | LBRACKET num RBRACKET { $2 }
 ;
 
 opt_type_decl:
